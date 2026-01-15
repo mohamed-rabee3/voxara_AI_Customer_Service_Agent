@@ -12,6 +12,7 @@ fastapi = "^0.115.0"
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
 livekit-agents = "^1.0.0"
 livekit-plugins-google = "^1.0.0"
+livekit-plugins-silero = "^1.0.0"
 livekit-api = "^1.0.2"
 qdrant-client = "^1.16.2"
 google-generativeai = "^0.8.0"

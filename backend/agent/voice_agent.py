@@ -4,6 +4,7 @@ Voara Voice Agent Logic
 Implements the voice agent using LiveKit Agents with Gemini Live API and RAG.
 """
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -128,7 +129,7 @@ Remember to base your answer on this context. If the context doesn't contain the
         return self._last_query
 
 
-async def setup_session_events(
+def setup_session_events(
     session: AgentSession,
     agent: VoaraAgent,
     room: rtc.Room
@@ -144,9 +145,8 @@ async def setup_session_events(
         room: The LiveKit room
     """
     
-    @session.on("user_input_transcribed")
-    async def on_user_input_transcribed(event: UserInputTranscribedEvent):
-        """Handle user speech transcription."""
+    async def _handle_user_input(event: UserInputTranscribedEvent):
+        """Async handler for user speech transcription."""
         if not event.is_final:
             return
         
@@ -163,15 +163,14 @@ async def setup_session_events(
             if context:
                 # Update room metadata with context (for UI display)
                 try:
-                    metadata = {
-                        "rag_context": context[:500],  # Truncate for metadata
-                        "rag_query": transcript
-                    }
-                    # Note: Room metadata updates would go here
-                    # await room.local_participant.update_metadata(json.dumps(metadata))
                     logger.info("RAG context retrieved and ready")
                 except Exception as e:
                     logger.warning(f"Failed to update metadata: {e}")
+    
+    @session.on("user_input_transcribed")
+    def on_user_input_transcribed(event: UserInputTranscribedEvent):
+        """Sync callback that spawns async task."""
+        asyncio.create_task(_handle_user_input(event))
     
     logger.info("Session event handlers configured")
 
@@ -192,3 +191,4 @@ def create_agent(enable_rag: bool = True) -> VoaraAgent:
         base_instructions=VOARA_SYSTEM_INSTRUCTIONS,
         enable_rag=enable_rag and settings.enable_rag
     )
+

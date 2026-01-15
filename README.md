@@ -1,163 +1,303 @@
 # Voara AI Voice Agent
 
-A real-time voice-enabled AI customer service agent built with LiveKit, Gemini Live API, and RAG.
+A real-time voice AI customer service assistant powered by **Gemini Live API**, **LiveKit**, and **RAG (Retrieval-Augmented Generation)**.
 
-![Architecture](docs/architecture.png)
+![Voara AI](https://img.shields.io/badge/Powered%20by-Gemini%20Live%20API-blue)
+![LiveKit](https://img.shields.io/badge/Voice-LiveKit-green)
+![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-black)
+![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688)
 
-## Features
+## 🚀 Features
 
-- 🎤 **Real-time Voice Interaction** - Natural voice conversations powered by Gemini Live API
-- 🧠 **RAG-Enhanced Responses** - Context-aware answers from your knowledge base
-- 🌐 **Bilingual Support** - English and Arabic language support
-- 🎨 **Modern UI** - Beautiful animated interface with dark/light mode
-- ⚡ **Low Latency** - Sub-second response times
+- **Real-time Voice Conversations**: Natural voice interactions powered by Gemini Live API
+- **RAG-Enhanced Responses**: Answers grounded in your knowledge base
+- **Bilingual Support**: English and Arabic with RTL support
+- **Beautiful UI**: Animated magic sphere with dark mode support
+- **Live Transcripts**: Real-time conversation display
+- **Context Visibility**: See what knowledge the AI is using
 
-## Architecture
+## 📋 Architecture
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Next.js       │     │   LiveKit       │     │   Python        │
-│   Frontend      │◄───►│   Cloud         │◄───►│   Backend       │
-│   (Vercel)      │     │   (WebRTC)      │     │   (FastAPI)     │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                         │
-                              ┌──────────────────────────┼──────────────────────────┐
-                              │                          │                          │
-                              ▼                          ▼                          ▼
-                    ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-                    │   Gemini Live   │     │   Qdrant        │     │   Google        │
-                    │   API           │     │   Cloud         │     │   Embeddings    │
-                    │   (Voice AI)    │     │   (Vector DB)   │     │   (RAG)         │
-                    └─────────────────┘     └─────────────────┘     └─────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                         Frontend (Next.js)                      │
+│   ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐ │
+│   │ Magic Sphere │  │  Transcript  │  │   Context Panel     │ │
+│   │  (animated)  │  │    Panel     │  │   (RAG context)     │ │
+│   └──────────────┘  └──────────────┘  └──────────────────────┘ │
+└───────────────────────────┬────────────────────────────────────┘
+                            │ WebSocket (LiveKit)
+                            ▼
+┌────────────────────────────────────────────────────────────────┐
+│                     LiveKit Cloud                               │
+│              (Real-time audio streaming)                        │
+└───────────────────────────┬────────────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────────────┐
+│                   Voice Agent (Python)                          │
+│   ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐ │
+│   │ Gemini Live  │  │   Silero    │  │    RAG Retriever     │ │
+│   │   API        │  │     VAD     │  │   (Qdrant + Gemini)  │ │
+│   └──────────────┘  └──────────────┘  └──────────────────────┘ │
+└───────────────────────────┬────────────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────────────┐
+│                     Backend API (FastAPI)                       │
+│   ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐ │
+│   │Token Endpoint│  │Health Checks │  │   RAG Query API     │ │
+│   └──────────────┘  └──────────────┘  └──────────────────────┘ │
+└───────────────────────────┬────────────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────────────┐
+│                      Qdrant Cloud                               │
+│                (Vector database for RAG)                        │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-### Backend
-- **FastAPI** - REST API framework
-- **LiveKit Agents** - Real-time voice agent framework
-- **Gemini Live API** - Speech-to-speech AI model
-- **Qdrant** - Vector database for RAG
-- **Google text-embedding-004** - Multilingual embeddings
+| Component | Technology |
+|-----------|------------|
+| Voice AI | Gemini Live API (gemini-2.0-flash-live-001) |
+| Voice Streaming | LiveKit Cloud |
+| Voice Detection | Silero VAD |
+| Frontend | Next.js 16, React 19, Tailwind CSS v4, Framer Motion |
+| Backend API | FastAPI, Uvicorn |
+| Vector DB | Qdrant Cloud |
+| Embeddings | Google text-embedding-004 |
 
-### Frontend
-- **Next.js 15** - React framework
-- **shadcn/ui** - UI component library
-- **Framer Motion** - Animations
-- **LiveKit React SDK** - Real-time audio components
-
-## Prerequisites
+## 📦 Prerequisites
 
 - Python 3.11+
-- Node.js 18+
+- Node.js 20+
 - Poetry (Python package manager)
-- API keys for:
-  - [LiveKit Cloud](https://cloud.livekit.io) (free tier)
-  - [Google AI Studio](https://aistudio.google.com/apikey) (free tier)
-  - [Qdrant Cloud](https://cloud.qdrant.io) (free tier)
+- npm/pnpm
 
-## Quick Start
+### Cloud Services Required
 
-### 1. Clone and Setup Environment
+1. **LiveKit Cloud** - [Sign up here](https://cloud.livekit.io/)
+2. **Google AI Studio** - [Get API key](https://aistudio.google.com/apikey)
+3. **Qdrant Cloud** - [Sign up here](https://cloud.qdrant.io/)
+
+## 🚀 Quick Start
+
+### 1. Clone and Setup
 
 ```bash
-git clone https://github.com/yourusername/voxara_AI_Customer_Service_Agent.git
+git clone <repository-url>
 cd voxara_AI_Customer_Service_Agent
-
-# Copy environment template
-cp .env.example .env
-# Edit .env with your API keys
 ```
 
-### 2. Backend Setup
+### 2. Configure Environment Variables
+
+Copy the example environment file and fill in your credentials:
+
+```bash
+# Backend
+cp backend/.env.example backend/.env
+
+# Frontend
+cp frontend/.env.example frontend/.env
+```
+
+#### Backend `.env`:
+```env
+# LiveKit Configuration
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=your-api-key
+LIVEKIT_API_SECRET=your-api-secret
+
+# Google AI (Gemini)
+GOOGLE_API_KEY=your-google-api-key
+
+# Qdrant Cloud
+QDRANT_URL=https://your-cluster.qdrant.io
+QDRANT_API_KEY=your-qdrant-api-key
+```
+
+#### Frontend `.env`:
+```env
+NEXT_PUBLIC_LIVEKIT_URL=wss://your-project.livekit.cloud
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### 3. Install Dependencies
+
+```bash
+# Backend
+cd backend
+poetry install
+
+# Frontend
+cd ../frontend
+npm install
+```
+
+### 4. Ingest Knowledge Base
+
+Add your knowledge documents to `rag_data/` and run:
 
 ```bash
 cd backend
-
-# Install dependencies
-poetry install
-
-# Ingest knowledge base
 poetry run python scripts/ingest_knowledge.py
+```
 
-# Start FastAPI server (in one terminal)
+### 5. Start the Services
+
+**Terminal 1 - Backend API:**
+```bash
+cd backend
 poetry run uvicorn api.main:app --reload --port 8000
+```
 
-# Start LiveKit agent (in another terminal)
+**Terminal 2 - Voice Agent:**
+```bash
+cd backend
 poetry run python -m agent.main dev
 ```
 
-### 3. Frontend Setup
-
+**Terminal 3 - Frontend:**
 ```bash
 cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
 npm run dev
 ```
 
-### 4. Open the App
+### 6. Access the Application
 
-Navigate to http://localhost:3000 and click "Start Conversation" to begin!
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Project Structure
+## 🧪 Running Tests
+
+```bash
+# Backend tests (57 tests)
+cd backend
+poetry run pytest
+
+# With coverage
+poetry run pytest --cov=.
+
+# Specific test file
+poetry run pytest tests/test_api.py -v
+```
+
+## 📚 API Documentation
+
+Once the backend is running, access the interactive API docs:
+
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+### Key Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/token` | POST | Generate LiveKit access token |
+| `/api/health` | GET | Health check with dependency status |
+| `/api/health/ready` | GET | Kubernetes readiness probe |
+| `/api/rag/query` | POST | Test RAG retrieval |
+| `/api/rag/stats` | GET | RAG collection statistics |
+
+## 📁 Project Structure
 
 ```
+voxara_AI_Customer_Service_Agent/
 ├── backend/
 │   ├── api/              # FastAPI REST API
+│   │   ├── routes/       # API endpoints
+│   │   └── middleware/   # CORS config
 │   ├── agent/            # LiveKit Voice Agent
-│   ├── rag/              # RAG pipeline
-│   └── scripts/          # Utility scripts
+│   │   ├── main.py       # Entry point
+│   │   ├── voice_agent.py # Agent logic
+│   │   └── config.py     # Configuration
+│   ├── rag/              # RAG Pipeline
+│   │   ├── chunker.py    # Document chunking
+│   │   ├── embeddings.py # Embedding generation
+│   │   ├── retriever.py  # Context retrieval
+│   │   └── qdrant_service.py # Vector store
+│   ├── scripts/          # Utility scripts
+│   └── tests/            # Unit tests
 ├── frontend/
-│   ├── app/              # Next.js app router
+│   ├── app/              # Next.js pages
 │   ├── components/       # React components
+│   │   ├── ui/           # shadcn/ui components
+│   │   └── voice-agent/  # Voice agent UI
 │   └── lib/              # Utilities
 └── rag_data/             # Knowledge base documents
 ```
 
-## Environment Variables
+## 🎨 UI Features
 
-| Variable | Description |
-|----------|-------------|
-| `LIVEKIT_URL` | LiveKit Cloud WebSocket URL |
-| `LIVEKIT_API_KEY` | LiveKit API key |
-| `LIVEKIT_API_SECRET` | LiveKit API secret |
-| `GOOGLE_API_KEY` | Google AI Studio API key |
-| `QDRANT_URL` | Qdrant Cloud cluster URL |
-| `QDRANT_API_KEY` | Qdrant API key |
+- **Magic Sphere**: Animated orb showing agent state (idle, listening, speaking, thinking)
+- **Dark Mode**: System-aware with manual toggle
+- **Transcript Panel**: Real-time conversation display
+- **Context Panel**: Collapsible RAG context viewer
+- **RTL Support**: Automatic Arabic text detection
+- **Responsive**: Mobile, tablet, and desktop layouts
 
-## Testing
+## 🔧 Configuration Options
 
-### Backend Tests
-```bash
-cd backend
-poetry run pytest tests/ -v
-```
+### Agent Configuration (`backend/agent/config.py`)
 
-### Manual Testing
-1. Ask: "What does Voara AI do?"
-2. Expected: Agent responds with company information from knowledge base
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `gemini_model` | `gemini-2.0-flash-live-001` | Gemini model for voice |
+| `gemini_voice` | `Aoede` | Voice for TTS |
+| `temperature` | `0.7` | Response creativity |
+| `enable_rag` | `true` | Enable RAG context |
+| `rag_top_k` | `3` | Number of chunks to retrieve |
 
-## Deployment
+### RAG Configuration (`backend/rag/config.py`)
 
-### Frontend (Vercel)
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `chunk_size` | `500` | Max characters per chunk |
+| `chunk_overlap` | `50` | Overlap between chunks |
+| `embedding_model` | `text-embedding-004` | Google embedding model |
+| `embedding_dimension` | `768` | Vector dimension |
+
+## 🚢 Deployment
+
+### Vercel (Frontend)
+
 ```bash
 cd frontend
-vercel deploy
+vercel
 ```
 
-### Backend (Render/Railway)
-Use the provided Dockerfile or connect your repository directly.
+Set environment variables in Vercel dashboard.
 
-## License
+### Railway/Render (Backend)
 
-MIT
+Deploy the FastAPI backend with:
 
-## Acknowledgments
+```bash
+cd backend
+# Start command
+poetry run uvicorn api.main:app --host 0.0.0.0 --port $PORT
+```
 
-- [LiveKit](https://livekit.io) - Real-time communication platform
-- [Google Gemini](https://ai.google.dev) - AI models
-- [Qdrant](https://qdrant.tech) - Vector search engine
+### LiveKit Agent
+
+Deploy the agent to your server or use LiveKit Cloud's agent hosting.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `poetry run pytest`
+5. Submit a pull request
+
+## 📄 License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [LiveKit](https://livekit.io/) for real-time audio infrastructure
+- [Google AI](https://ai.google.dev/) for Gemini Live API
+- [Qdrant](https://qdrant.tech/) for vector database
+- [shadcn/ui](https://ui.shadcn.com/) for UI components

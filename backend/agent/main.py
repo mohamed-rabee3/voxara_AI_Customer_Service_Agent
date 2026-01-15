@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from livekit import agents, rtc
-from livekit.agents import AgentServer, AgentSession, room_io
+from livekit.agents import AgentServer, AgentSession, room_io, cli
 from livekit.plugins import google, silero
 
 from .config import get_agent_settings, validate_agent_settings, VOARA_SYSTEM_INSTRUCTIONS
@@ -91,8 +91,8 @@ async def voara_agent(ctx: agents.JobContext):
         vad=silero.VAD.load(),  # Voice Activity Detection
     )
     
-    # Set up event handlers
-    await setup_session_events(session, agent, ctx.room)
+    # Set up event handlers (sync function that registers async callbacks)
+    setup_session_events(session, agent, ctx.room)
     
     # Start the session
     await session.start(
@@ -157,8 +157,8 @@ def main():
     logger.info("Starting Voara Voice Agent...")
     logger.info(f"LiveKit URL: {os.getenv('LIVEKIT_URL', 'not set')}")
     
-    # The server.run() handles both 'dev' and 'start' modes
-    server.run()
+    # The cli.run_app handles both 'dev' and 'start' modes
+    cli.run_app(server)
 
 
 if __name__ == "__main__":

@@ -20,14 +20,8 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Webpack configuration for LiveKit
-  webpack: (config) => {
-    // Ensure proper resolution of ES modules
-    config.resolve.extensionAlias = {
-      ".js": [".ts", ".tsx", ".js", ".jsx"],
-    };
-    return config;
-  },
+  // Turbopack configuration (Next.js 15+)
+  turbopack: {},
 };
 
 export default nextConfig;
