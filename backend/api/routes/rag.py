@@ -153,3 +153,50 @@ async def get_rag_stats():
             status_code=500,
             detail=f"Failed to get RAG stats: {str(e)}"
         )
+
+
+@router.get("/rag/context")
+async def get_current_context():
+    """
+    Get the current/last RAG context retrieved by the agent.
+    
+    This is used by the frontend to display what context the agent
+    is using to answer questions.
+    
+    Returns:
+        The last RAG query and context, or empty if none
+    """
+    try:
+        # Import from agent tools (note: this runs in separate process, so we 
+        # need a different approach - use file-based sharing)
+        import json
+        import os
+        
+        context_file = os.path.join(os.path.dirname(__file__), "..", "..", "rag_context.json")
+        
+        if os.path.exists(context_file):
+            with open(context_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return {
+                    "query": data.get("query", ""),
+                    "context": data.get("context", ""),
+                    "timestamp": data.get("timestamp"),
+                    "has_context": bool(data.get("context"))
+                }
+        
+        return {
+            "query": "",
+            "context": "",
+            "timestamp": None,
+            "has_context": False
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get RAG context: {e}")
+        return {
+            "query": "",
+            "context": "",
+            "timestamp": None,
+            "has_context": False,
+            "error": str(e)
+        }

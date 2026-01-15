@@ -6,6 +6,7 @@ LiveKit Voice Agent with Gemini Live API and RAG integration.
 
 from .config import get_agent_settings, validate_agent_settings, VOARA_SYSTEM_INSTRUCTIONS
 from .voice_agent import VoaraAgent, create_agent, setup_session_events
+from .tools import RAG_TOOLS, search_knowledge_base
 
 __all__ = [
     "get_agent_settings",
@@ -14,4 +15,6 @@ __all__ = [
     "VoaraAgent",
     "create_agent",
     "setup_session_events",
+    "RAG_TOOLS",
+    "search_knowledge_base",
 ]

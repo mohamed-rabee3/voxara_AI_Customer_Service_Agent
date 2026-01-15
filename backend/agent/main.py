@@ -1,10 +1,10 @@
 """
 LiveKit Voice Agent Entry Point
 
-Main entry point for running the Voara Voice Agent with LiveKit.
-Run with: python -m agent.main dev
+Starts the Voara Voice Agent with Gemini Live API.
 """
 
+import asyncio
 import logging
 import os
 import sys
@@ -24,6 +24,7 @@ from livekit.plugins import google, silero
 
 from .config import get_agent_settings, validate_agent_settings, VOARA_SYSTEM_INSTRUCTIONS
 from .voice_agent import VoaraAgent, setup_session_events
+from .tools import RAG_TOOLS
 
 # Configure logging
 logging.basicConfig(
@@ -64,31 +65,20 @@ async def voara_agent(ctx: agents.JobContext):
         enable_rag=settings.enable_rag
     )
     
-    # Retrieve initial context if RAG is enabled
-    initial_context = ""
-    if settings.enable_rag:
-        try:
-            # Pre-fetch general context about Voara
-            initial_context = await agent.retrieve_context(
-                "What is Voara AI and what services do you offer?"
-            )
-        except Exception as e:
-            logger.warning(f"Failed to retrieve initial context: {e}")
+    # Note: We no longer pre-fetch context - the agent will use the function tool
+    # to retrieve context dynamically for each user query
+    logger.info("RAG function calling enabled - agent will search knowledge base per query")
     
-    # Build instructions with context
-    instructions = VOARA_SYSTEM_INSTRUCTIONS
-    if initial_context:
-        instructions = agent.get_instructions_with_context(initial_context)
-    
-    # Create AgentSession with Gemini Live API
+    # Create AgentSession with Gemini Live API and RAG tools
     session = AgentSession(
         llm=google.realtime.RealtimeModel(
             model=settings.gemini_model,
             voice=settings.gemini_voice,
             temperature=settings.temperature,
-            instructions=instructions,
+            instructions=VOARA_SYSTEM_INSTRUCTIONS,
         ),
         vad=silero.VAD.load(),  # Voice Activity Detection
+        tools=RAG_TOOLS,  # Pass RAG function tools for dynamic retrieval
     )
     
     # Set up event handlers (sync function that registers async callbacks)
@@ -114,8 +104,15 @@ async def voara_agent(ctx: agents.JobContext):
                     "Ask how you can help them today. Keep it brief and friendly."
     )
     
-    # Wait for the session to end
-    await session.wait_for_close()
+    # Wait for the room to close
+    # The session will be automatically cleaned up when the room closes
+    close_event = asyncio.Event()
+    
+    @session.on("close")
+    def on_close(event):
+        close_event.set()
+    
+    await close_event.wait()
     
     logger.info("Agent session ended")
 

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
     formatTimestamp,
@@ -22,27 +21,28 @@ interface TranscriptPanelProps {
  * Supports RTL text for Arabic messages.
  */
 export function TranscriptPanel({ messages, className }: TranscriptPanelProps) {
-    const scrollRef = React.useRef<HTMLDivElement>(null);
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
     // Auto-scroll to bottom on new messages
     React.useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
         }
     }, [messages]);
 
     return (
-        <div className={cn("flex flex-col h-full", className)}>
-            <div className="flex items-center justify-between px-4 py-3 border-b">
-                <h3 className="font-semibold text-sm">Conversation</h3>
+        <div className={cn("flex flex-col bg-background/50 rounded-lg border", className)} style={{ height: '300px' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30 flex-shrink-0">
+                <h3 className="font-semibold text-sm">💬 Conversation</h3>
                 <span className="text-xs text-muted-foreground">
                     {messages.length} messages
                 </span>
             </div>
 
-            <ScrollArea
-                ref={scrollRef}
-                className="flex-1 px-4 custom-scrollbar"
+            {/* Scrollable conversation area */}
+            <div
+                ref={scrollContainerRef}
+                className="flex-1 overflow-y-auto px-4 custom-scrollbar"
             >
                 <div className="space-y-4 py-4">
                     <AnimatePresence initial={false}>
@@ -57,7 +57,7 @@ export function TranscriptPanel({ messages, className }: TranscriptPanelProps) {
                         </div>
                     )}
                 </div>
-            </ScrollArea>
+            </div>
         </div>
     );
 }

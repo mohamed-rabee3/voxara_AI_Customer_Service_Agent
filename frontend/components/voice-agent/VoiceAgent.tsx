@@ -7,6 +7,7 @@ import {
     useConnectionState,
     useRoomContext,
     useLocalParticipant,
+    useTranscriptions,
 } from "@livekit/components-react";
 import { ConnectionState } from "livekit-client";
 import { motion } from "framer-motion";
@@ -47,81 +48,95 @@ export function VoiceAgent({
     const [token, setToken] = React.useState<string | null>(null);
     const [liveKitUrl, setLiveKitUrl] = React.useState<string | null>(null);
     const [roomName, setRoomName] = React.useState<string>("");
-    const [error, setError] = React.useState<string | null>(null);
     const [isConnecting, setIsConnecting] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
 
+    // Handle connection
     const handleConnect = React.useCallback(async () => {
-        setError(null);
         setIsConnecting(true);
+        setError(null);
 
         try {
             const newRoomName = generateRoomName();
             setRoomName(newRoomName);
 
-            const response = await fetchToken({
+            const { token: newToken, livekit_url } = await fetchToken({
                 room_name: newRoomName,
-                participant_name: participantName,
+                participant_name: participantName
             });
 
-            setToken(response.token);
-            setLiveKitUrl(response.livekit_url);
+            setToken(newToken);
+            setLiveKitUrl(livekit_url);
         } catch (err) {
-            console.error("Failed to connect:", err);
             setError(err instanceof Error ? err.message : "Failed to connect");
+            setToken(null);
+            setLiveKitUrl(null);
         } finally {
             setIsConnecting(false);
         }
     }, [participantName]);
 
+    // Handle disconnection
     const handleDisconnect = React.useCallback(() => {
         setToken(null);
         setLiveKitUrl(null);
         setRoomName("");
+        setHasConnected(true); // Mark that we've been connected before (user chose to disconnect)
     }, []);
 
-    // If no token, show initial state
+    // Track if we've connected once (to prevent auto-reconnect after disconnect)
+    const [hasConnected, setHasConnected] = React.useState(false);
+
+    // Auto-connect on mount (only once)
+    React.useEffect(() => {
+        if (!hasConnected && !token && !isConnecting) {
+            handleConnect();
+        }
+    }, []); // Empty deps - only run on mount
+
+    // Not connected - show reconnect option
     if (!token || !liveKitUrl) {
         return (
             <div className={cn("flex flex-col items-center justify-center h-full", className)}>
-                <MagicSphere state="idle" size="xl" />
-
-                <div className="mt-8 text-center">
-                    <h2 className="text-2xl font-bold gradient-text mb-2">
-                        Voara AI Assistant
-                    </h2>
-                    <p className="text-muted-foreground mb-8 max-w-md">
-                        Your AI-powered voice assistant. Click below to start a conversation.
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-center"
+                >
+                    <MagicSphere state="idle" size="lg" />
+                    <p className="mt-6 text-muted-foreground">
+                        {isConnecting ? "Connecting to voice agent..." : hasConnected ? "Disconnected" : "Initializing..."}
                     </p>
-                </div>
-
-                <ControlButtons
-                    connectionState={isConnecting ? "connecting" : "disconnected"}
-                    isMuted={false}
-                    onConnect={handleConnect}
-                    onDisconnect={handleDisconnect}
-                    onToggleMute={() => { }}
-                />
-
-                {error && (
-                    <Alert variant="destructive" className="mt-6 max-w-md">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Connection Error</AlertTitle>
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
+                    {hasConnected && !isConnecting && (
+                        <button
+                            onClick={handleConnect}
+                            className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition"
+                        >
+                            Reconnect
+                        </button>
+                    )}
+                    {error && (
+                        <Alert variant="destructive" className="mt-4 max-w-md">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Connection Error</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
+                </motion.div>
             </div>
         );
     }
 
     return (
         <LiveKitRoom
-            serverUrl={liveKitUrl}
             token={token}
+            serverUrl={liveKitUrl}
             connect={true}
             audio={true}
             video={false}
-            onDisconnected={() => handleDisconnect()}
             className={cn("h-full", className)}
+            onDisconnected={handleDisconnect}
         >
             <RoomContent
                 onDisconnect={handleDisconnect}
@@ -146,6 +161,9 @@ function RoomContent({ onDisconnect, roomName }: RoomContentProps) {
     const room = useRoomContext();
     const connectionState = useConnectionState(room);
     const { localParticipant } = useLocalParticipant();
+
+    // Get real transcriptions from LiveKit
+    const transcriptions = useTranscriptions();
 
     const [agentState, setAgentState] = React.useState<AgentState>("idle");
     const [messages, setMessages] = React.useState<TranscriptMessage[]>([]);
@@ -176,30 +194,117 @@ function RoomContent({ onDisconnect, roomName }: RoomContentProps) {
         }
     }, [localParticipant, isMuted]);
 
-    // Listen for room events
+    // Keep track of exact texts we've already shown to avoid duplicates
+    const shownTexts = React.useRef<Set<string>>(new Set());
+    const messageCounter = React.useRef(0);
+
+    // Process transcriptions - track by exact text to avoid duplicates
+    React.useEffect(() => {
+        if (!transcriptions || transcriptions.length === 0) return;
+
+        // Process each transcription stream
+        transcriptions.forEach((stream) => {
+            const participantId = stream.participantInfo?.identity || 'agent';
+            const text = (stream.text || "").trim();
+
+            // Skip empty or very short texts
+            if (!text || text.length < 3) return;
+
+            // Check if we've already shown this exact text
+            if (shownTexts.current.has(text)) return;
+
+            // Add to shown texts
+            shownTexts.current.add(text);
+
+            // Determine if this is from user or agent
+            const isAgent = participantId.toLowerCase().includes("agent") ||
+                participantId.toLowerCase().includes("voara") ||
+                !participantId.toLowerCase().includes("user");
+
+            // Create new message
+            messageCounter.current += 1;
+            const newMessage: TranscriptMessage = {
+                id: `msg-${messageCounter.current}-${Date.now()}`,
+                role: isAgent ? "agent" : "user",
+                text,
+                timestamp: new Date(),
+                isFinal: true,
+            };
+
+            setMessages(prev => {
+                // Extra check: don't add if last message has same text
+                const lastMsg = prev[prev.length - 1];
+                if (lastMsg && lastMsg.text === text) return prev;
+
+                // Don't add if this text is a substring of the last message (streaming update)
+                if (lastMsg && lastMsg.role === newMessage.role && lastMsg.text.includes(text)) return prev;
+
+                // Don't add if last message is a substring of this (this is an update, replace it)
+                if (lastMsg && lastMsg.role === newMessage.role && text.includes(lastMsg.text)) {
+                    return [...prev.slice(0, -1), newMessage];
+                }
+
+                return [...prev, newMessage];
+            });
+
+            setAgentState(isAgent ? "speaking" : "listening");
+        });
+    }, [transcriptions]);
+
+    // Track last RAG timestamp to detect new context
+    const lastRagTimestamp = React.useRef<string | null>(null);
+
+    // Poll API for RAG context every 2 seconds while connected
+    React.useEffect(() => {
+        if (mappedConnectionState !== "connected") return;
+
+        const pollRagContext = async () => {
+            try {
+                const res = await fetch("http://localhost:8000/api/rag/context");
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.has_context && data.timestamp !== lastRagTimestamp.current) {
+                        lastRagTimestamp.current = data.timestamp;
+                        setRagContext({
+                            query: data.query || "",
+                            context: data.context || "",
+                            timestamp: new Date(data.timestamp),
+                        });
+                    }
+                }
+            } catch (err) {
+                // Silent fail - API might not be ready
+            }
+        };
+
+        // Poll immediately and then every 2 seconds
+        pollRagContext();
+        const interval = setInterval(pollRagContext, 2000);
+
+        return () => clearInterval(interval);
+    }, [mappedConnectionState]);
+
+    // Listen for room events (for RAG context from metadata - fallback)
     React.useEffect(() => {
         if (!room) return;
 
         const handleParticipantMetadataChanged = () => {
             // Parse metadata from agent participant for RAG context
             const agentParticipant = Array.from(room.remoteParticipants.values())
-                .find(p => p.identity.includes("agent"));
+                .find(p => p.identity.includes("agent") || p.identity.includes("voara"));
 
             if (agentParticipant?.metadata) {
                 try {
-                    const data = JSON.parse(agentParticipant.metadata);
-                    if (data.rag_context) {
+                    const metadata = JSON.parse(agentParticipant.metadata);
+                    if (metadata.rag_context) {
                         setRagContext({
-                            query: data.rag_query || "",
-                            context: data.rag_context,
+                            query: metadata.rag_context.query || "",
+                            context: metadata.rag_context.context || "",
                             timestamp: new Date(),
                         });
                     }
-                    if (data.agent_state) {
-                        setAgentState(data.agent_state as AgentState);
-                    }
-                } catch (e) {
-                    console.warn("Failed to parse agent metadata:", e);
+                } catch {
+                    // Ignore parse errors
                 }
             }
         };
@@ -211,42 +316,44 @@ function RoomContent({ onDisconnect, roomName }: RoomContentProps) {
         };
     }, [room]);
 
-    // Simulate agent state based on audio activity
+    // Update agent state based on active speakers
     React.useEffect(() => {
-        // This is a simplified state detection
-        // In production, this would come from the agent's metadata
-        const updateInterval = setInterval(() => {
-            // Check if local participant is speaking (user input)
-            if (localParticipant?.isSpeaking) {
-                setAgentState("listening");
-            }
-        }, 100);
+        if (!room) return;
 
-        return () => clearInterval(updateInterval);
-    }, [localParticipant]);
+        const handleActiveSpeakersChanged = () => {
+            const activeSpeakers = room.activeSpeakers;
 
-    // Demo message addition (in production, from transcription events)
-    const addMessage = React.useCallback((role: "user" | "agent", text: string) => {
-        const newMessage: TranscriptMessage = {
-            id: crypto.randomUUID(),
-            role,
-            text,
-            timestamp: new Date(),
-            isFinal: true,
-        };
-        setMessages(prev => [...prev, newMessage]);
-    }, []);
-
-    // Add welcome message when connected
-    React.useEffect(() => {
-        if (mappedConnectionState === "connected" && messages.length === 0) {
-            // Add initial agent greeting after a short delay
-            setTimeout(() => {
-                addMessage("agent", "Hello! I'm Voara AI, your voice assistant. How can I help you today?");
+            if (activeSpeakers.length === 0) {
                 setAgentState("idle");
-            }, 1500);
-        }
-    }, [mappedConnectionState, messages.length, addMessage]);
+                return;
+            }
+
+            // Check if agent is speaking
+            const agentSpeaking = activeSpeakers.some(
+                p => p.identity.includes("agent") || p.identity.includes("voara")
+            );
+
+            // Check if user is speaking
+            const userSpeaking = activeSpeakers.some(
+                p => p === localParticipant
+            );
+
+            if (agentSpeaking) {
+                setAgentState("speaking");
+            } else if (userSpeaking) {
+                setAgentState("listening");
+            } else {
+                setAgentState("idle");
+            }
+        };
+
+        room.on("activeSpeakersChanged", handleActiveSpeakersChanged);
+
+        return () => {
+            room.off("activeSpeakersChanged", handleActiveSpeakersChanged);
+        };
+    }, [room, localParticipant]);
+
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full p-4">
@@ -298,7 +405,7 @@ function RoomContent({ onDisconnect, roomName }: RoomContentProps) {
                     <TranscriptPanel messages={messages} className="h-full" />
                 </Card>
 
-                <ContextPanel context={ragContext} defaultExpanded={false} />
+                <ContextPanel context={ragContext} defaultExpanded={true} />
             </div>
         </div>
     );
