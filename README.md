@@ -142,7 +142,7 @@ Add your knowledge documents to `rag_data/` and run:
 
 ```bash
 cd backend
-poetry run python scripts/ingest_knowledge.py
+python -m poetry run python scripts/ingest_knowledge.py
 ```
 
 ### 5. Start the Services
@@ -150,13 +150,13 @@ poetry run python scripts/ingest_knowledge.py
 **Terminal 1 - Backend API:**
 ```bash
 cd backend
-poetry run uvicorn api.main:app --reload --port 8000
+python -m poetry run uvicorn api.main:app --reload --port 8000
 ```
 
 **Terminal 2 - Voice Agent:**
 ```bash
 cd backend
-poetry run python -m agent.main dev
+python -m poetry run python -m agent.main dev
 ```
 
 **Terminal 3 - Frontend:**

@@ -14,7 +14,7 @@ export default function HomePage() {
     <main className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
-        <div className="container flex h-16 items-center justify-between px-4">
+        <div className="container flex h-16 items-center justify-between px-4 mx-auto">
           {/* Logo */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -34,15 +34,15 @@ export default function HomePage() {
             </div>
           </motion.div>
 
-          {/* Right Side */}
-          <div className="flex items-center gap-2">
+          {/* Right Side - Theme Toggle */}
+          <div className="flex items-center justify-end ml-auto">
             <ThemeToggle />
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 container py-8 px-4">
+      <div className="flex-1 container py-8 px-4 mx-auto">
         <VoiceAgent participantName="User" className="min-h-[calc(100vh-8rem)]" />
       </div>
 

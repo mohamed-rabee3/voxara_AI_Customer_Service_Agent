@@ -66,7 +66,7 @@ interface MessageBubbleProps {
     message: TranscriptMessage;
 }
 
-function MessageBubble({ message }: MessageBubbleProps) {
+const MessageBubble = React.memo(function MessageBubble({ message }: MessageBubbleProps) {
     const isUser = message.role === "user";
     const textDir = getTextDirection(message.text);
 
@@ -125,4 +125,8 @@ function MessageBubble({ message }: MessageBubbleProps) {
             )}
         </motion.div>
     );
-}
+}, (prevProps, nextProps) => {
+    // Custom comparison: only re-render if message ID or text changed
+    return prevProps.message.id === nextProps.message.id && 
+           prevProps.message.text === nextProps.message.text;
+});

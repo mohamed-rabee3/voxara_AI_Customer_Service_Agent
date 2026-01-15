@@ -81,47 +81,42 @@ export function VoiceAgent({
         setToken(null);
         setLiveKitUrl(null);
         setRoomName("");
-        setHasConnected(true); // Mark that we've been connected before (user chose to disconnect)
     }, []);
 
-    // Track if we've connected once (to prevent auto-reconnect after disconnect)
-    const [hasConnected, setHasConnected] = React.useState(false);
-
-    // Auto-connect on mount (only once)
-    React.useEffect(() => {
-        if (!hasConnected && !token && !isConnecting) {
-            handleConnect();
-        }
-    }, []); // Empty deps - only run on mount
-
-    // Not connected - show reconnect option
+    // Not connected - show Start Conversation button
     if (!token || !liveKitUrl) {
         return (
-            <div className={cn("flex flex-col items-center justify-center h-full", className)}>
+            <div className={cn("flex flex-col items-center justify-center h-full w-full", className)}>
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3 }}
-                    className="text-center"
+                    className="flex flex-col items-center text-center w-full"
                 >
-                    <MagicSphere state="idle" size="lg" />
+                    <div className="flex justify-center w-full">
+                        <MagicSphere state="idle" size="lg" />
+                    </div>
                     <p className="mt-6 text-muted-foreground">
-                        {isConnecting ? "Connecting to voice agent..." : hasConnected ? "Disconnected" : "Initializing..."}
+                        {isConnecting ? "Connecting to voice agent..." : "Ready to start"}
                     </p>
-                    {hasConnected && !isConnecting && (
-                        <button
-                            onClick={handleConnect}
-                            className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition"
-                        >
-                            Reconnect
-                        </button>
+                    {!isConnecting && (
+                        <div className="flex justify-center w-full mt-4">
+                            <button
+                                onClick={handleConnect}
+                                className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition font-medium"
+                            >
+                                Start Conversation
+                            </button>
+                        </div>
                     )}
                     {error && (
-                        <Alert variant="destructive" className="mt-4 max-w-md">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Connection Error</AlertTitle>
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
+                        <div className="flex justify-center w-full mt-4">
+                            <Alert variant="destructive" className="max-w-md">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Connection Error</AlertTitle>
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        </div>
                     )}
                 </motion.div>
             </div>
@@ -221,28 +216,39 @@ function RoomContent({ onDisconnect, roomName }: RoomContentProps) {
                 participantId.toLowerCase().includes("voara") ||
                 !participantId.toLowerCase().includes("user");
 
-            // Create new message
-            messageCounter.current += 1;
-            const newMessage: TranscriptMessage = {
-                id: `msg-${messageCounter.current}-${Date.now()}`,
-                role: isAgent ? "agent" : "user",
-                text,
-                timestamp: new Date(),
-                isFinal: true,
-            };
-
             setMessages(prev => {
-                // Extra check: don't add if last message has same text
                 const lastMsg = prev[prev.length - 1];
-                if (lastMsg && lastMsg.text === text) return prev;
+                
+                // Extra check: don't add if last message has same text
+                if (lastMsg && lastMsg.text === text) {
+                    return prev;
+                }
 
                 // Don't add if this text is a substring of the last message (streaming update)
-                if (lastMsg && lastMsg.role === newMessage.role && lastMsg.text.includes(text)) return prev;
+                if (lastMsg && lastMsg.role === (isAgent ? "agent" : "user") && lastMsg.text.includes(text)) {
+                    return prev;
+                }
 
                 // Don't add if last message is a substring of this (this is an update, replace it)
-                if (lastMsg && lastMsg.role === newMessage.role && text.includes(lastMsg.text)) {
-                    return [...prev.slice(0, -1), newMessage];
+                // CRITICAL FIX: Preserve the existing message ID to prevent flickering
+                if (lastMsg && lastMsg.role === (isAgent ? "agent" : "user") && text.includes(lastMsg.text)) {
+                    const updatedMessage: TranscriptMessage = {
+                        ...lastMsg,  // Preserve ID and other properties
+                        text,        // Update text
+                        timestamp: new Date(),  // Update timestamp
+                    };
+                    return [...prev.slice(0, -1), updatedMessage];
                 }
+
+                // Create new message only when adding (not replacing)
+                messageCounter.current += 1;
+                const newMessage: TranscriptMessage = {
+                    id: `msg-${messageCounter.current}-${Date.now()}`,
+                    role: isAgent ? "agent" : "user",
+                    text,
+                    timestamp: new Date(),
+                    isFinal: true,
+                };
 
                 return [...prev, newMessage];
             });
