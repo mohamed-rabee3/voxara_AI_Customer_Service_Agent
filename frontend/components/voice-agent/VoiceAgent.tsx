@@ -57,6 +57,13 @@ export function VoiceAgent({
         setError(null);
 
         try {
+            // Clear RAG context on backend when starting new conversation
+            try {
+                await fetch("http://localhost:8000/api/rag/context", { method: "DELETE" });
+            } catch (err) {
+                // Silent fail - API might not be ready, agent will clear it anyway
+            }
+
             const newRoomName = generateRoomName();
             setRoomName(newRoomName);
 
@@ -259,6 +266,20 @@ function RoomContent({ onDisconnect, roomName }: RoomContentProps) {
 
     // Track last RAG timestamp to detect new context
     const lastRagTimestamp = React.useRef<string | null>(null);
+
+    // Clear RAG context when starting a new session (roomName changes)
+    React.useEffect(() => {
+        setRagContext(null);
+        lastRagTimestamp.current = null;
+    }, [roomName]);
+
+    // Clear RAG context when connection state changes to disconnected
+    React.useEffect(() => {
+        if (mappedConnectionState === "disconnected") {
+            setRagContext(null);
+            lastRagTimestamp.current = null;
+        }
+    }, [mappedConnectionState]);
 
     // Poll API for RAG context every 2 seconds while connected
     React.useEffect(() => {

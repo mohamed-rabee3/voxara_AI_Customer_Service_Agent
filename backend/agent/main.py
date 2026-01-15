@@ -59,6 +59,18 @@ async def voara_agent(ctx: agents.JobContext):
     
     logger.info(f"Starting agent session for room: {ctx.room.name}")
     
+    # Clear RAG context file when a new session starts
+    # This prevents showing old tool calling results from previous sessions
+    try:
+        import json
+        context_file = os.path.join(Path(__file__).parent.parent, "rag_context.json")
+        if os.path.exists(context_file):
+            with open(context_file, "w", encoding="utf-8") as f:
+                json.dump({"query": "", "context": "", "timestamp": None}, f, ensure_ascii=False)
+            logger.info(f"Cleared RAG context file for new session: {ctx.room.name}")
+    except Exception as e:
+        logger.warning(f"Failed to clear RAG context file: {e}")
+    
     # Create the Voara agent with RAG support
     agent = VoaraAgent(
         base_instructions=VOARA_SYSTEM_INSTRUCTIONS,

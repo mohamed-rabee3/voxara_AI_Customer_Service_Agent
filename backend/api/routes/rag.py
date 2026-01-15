@@ -155,6 +155,36 @@ async def get_rag_stats():
         )
 
 
+@router.delete("/rag/context")
+async def clear_context():
+    """
+    Clear the RAG context file.
+    
+    This is used by the frontend to clear context when starting a new conversation.
+    
+    Returns:
+        Success status
+    """
+    try:
+        import json
+        import os
+        
+        context_file = os.path.join(os.path.dirname(__file__), "..", "..", "rag_context.json")
+        
+        # Clear the context file by writing empty data
+        with open(context_file, "w", encoding="utf-8") as f:
+            json.dump({"query": "", "context": "", "timestamp": None}, f, ensure_ascii=False)
+        
+        return {"success": True, "message": "Context cleared"}
+        
+    except Exception as e:
+        logger.error(f"Failed to clear RAG context: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to clear context: {str(e)}"
+        )
+
+
 @router.get("/rag/context")
 async def get_current_context():
     """
